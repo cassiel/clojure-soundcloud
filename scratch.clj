@@ -7,3 +7,5 @@
 
 (def res (c/upload-file "/Users/nick/Desktop/0001 TAKES.wav"))
 (def res (c/upload-file "/Users/nick/Desktop/grooble.wav"))
+
+(:status-line res)
