@@ -5,20 +5,30 @@
            [org.apache.http HttpStatus]
            [java.io File]))
 
-(def SC-INFO (ch/parse-stream
-              (clojure.java.io/reader m/CREDENTIALS)
-              true))
+;; Temporary file to store serialised SoundCloud authentication token.
+
+(def temp-serial-file
+  (let [f (File/createTempFile "sc-ser" nil)]
+    (.deleteOnExit f)
+    f))
+
+(defn read-sc-info
+  "Read SoundCloud authentication information from a JSON file."
+  [filename]
+  (:soundcloud (ch/parse-stream
+                (clojure.java.io/reader filename)
+                true)))
 
 (defn create-wrapper
   "Based on com.soundcloud.api.examples.CreateWrapper from the
    java-api-wrapper example code. This is a rather ugly method
    for persisting an authentication token, but we've ported it
    relatively verbatim."
-  []
-  (let [{:keys [id secret username password]} SC-INFO
+  [sc-info]
+  (let [{:keys [id secret username password]} sc-info
         wrapper (ApiWrapper. id secret nil nil Env/LIVE)
         token (.login wrapper username password)]
-    (.toFile wrapper (File. m/SERIALISED-WRAPPER))))
+    (.toFile wrapper temp-serial-file)))
 
 (defn tidy-up
   "Parse the JSON from the response, wrap everything into a
@@ -34,15 +44,17 @@
 (defn upload-file
   "Based on com.soundcloud.api.examples.UploadFile.
    NOTE: requires serialised wrapper on disk via
-   create-wrapper."
+   create-wrapper.
+   TODO: obviously not thread-safe since it re-writes the
+   auth. token. (This is SoundCloud's method - don't blame me.)"
   [filename]
   (let [file (File. filename)
-        wrapper (ApiWrapper/fromFile (File. m/SERIALISED-WRAPPER))
+        wrapper (ApiWrapper/fromFile temp-serial-file)
         request (-> (Request/to Endpoints/TRACKS (into-array nil))
                     (.add Params$Track/TITLE (.getName file))
                     (.add Params$Track/TAG_LIST "demo upload")
                     (.withFile Params$Track/ASSET_DATA file))
         response (try
                    (.post wrapper request)
-                   (finally (.toFile wrapper (File. m/SERIALISED-WRAPPER))))]
+                   (finally (.toFile wrapper temp-serial-file)))]
     (tidy-up response)))
