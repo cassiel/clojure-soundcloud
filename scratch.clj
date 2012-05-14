@@ -1,5 +1,5 @@
 (require '[cheshire [core :as ch]]
-         '[clojure-soundcloud [core :as c]])
+		 '[clojure-soundcloud [core :as c]])
 (import '[com.soundcloud.api ApiWrapper Env Request Params Params$Track Http])
 
 ; Do this first:
@@ -11,4 +11,15 @@
 res
 (:status-line res)
 
-clojure-soundcloud.core/temp-serial-file
+
+;; --- New, protocol-based uploader.
+
+(ns user
+  (:require (clojure-soundcloud [core :as c])))
+
+(def cfg (reify c/CONFIGURATION
+		   (sc-credentials-filename [this] "/Users/nick/Desktop/sc-credentials.json")))
+
+(def uploader (c/soundcloud-handler cfg))
+
+(c/upload-file uploader "/Users/nick/Desktop/garble.wav")
